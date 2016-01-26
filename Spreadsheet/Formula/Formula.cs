@@ -41,69 +41,53 @@ namespace Formulas
         /// </summary>
         public Formula(String formula)
         {
-            // It checks if there is at least one token.
-            if (GetTokens(formula).Count() == 0)
+            if (formula == null)
             {
                 new FormulaFormatException("Nothing to calculate");
-                return;
+            }
+
+            List<string> tokens = new List<string>(GetTokens(formula));
+            // It checks if there is at least one token.
+            if (tokens.Count() < 1)
+            {
+                new FormulaFormatException("Nothing to calculate");
             }
             double result;
             // It checks if the first token is a valid entry as a first token.
-            if (double.TryParse(GetTokens(formula).First(), out result) == false)
+            if (double.TryParse(tokens[0], out result) == false && (Regex.IsMatch(tokens[0], "^[A-Za-z]+[A-Za-z0-9]*") == false) && tokens[0] != "(")
             {
-                foreach (char c in GetTokens(formula).First())
-                {
-                    if ("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789(".Contains(c) == false)
-                    {
-                        new FormulaFormatException("Only numbers, variables, or a left parenthesis are allowed as the first character.");
-                        return;
-                    }
-                }
+                new FormulaFormatException("Only numbers, variables, or a left parenthesis are allowed as the first character.");
             }
-            int lpar = 0, rpar = 0;
-            foreach (string s in GetTokens(formula))
-            {
-                // It checks if there are any invalid tokens.
-                if (double.TryParse(s, out result) == false)
-                {
-                    foreach (char c in s)
-                    {
-                        if ("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789+-*/()".Contains(c) == false)
-                        {
-                            new FormulaFormatException("Invalid character in the expression.");
-                            return;
-                        }
 
-                    }
-                }
-                // It checks that the valid tokens are in the right order.
-                // Example: 
-                bool operatorlpar = true;
-                bool numberrpar = true;
-                if ("xyzXYZ1234567890+-*/().".Contains(s) == false)
+            // It checks that the last token is a number, variable or closing parenthesis.
+            if (double.TryParse(tokens[tokens.Count()-1], out result) == false && (Regex.IsMatch(tokens[tokens.Count() - 1], "^[A-Za-z]+[A-Za-z0-9]*") == false) && tokens[0] != ")")
+            {
+                new FormulaFormatException("Only numbers, variables, or a left parenthesis are allowed as the first character.");
+            }
+
+            int lpar = 0, rpar = 0;
+            for (int i=0; i < (tokens.Count()-1); i++)
+            {
+                string s = tokens[i].Trim(), t = tokens[i+1].Trim();
+                // It checks if there are any invalid tokens.
+                if (double.TryParse(s, out result) == false && (Regex.IsMatch(tokens[0], "^[A-Za-z]+[A-Za-z0-9]*") == false) && (Regex.IsMatch(s, "[()+-*/]+") == false))
                 {
                     new FormulaFormatException("Invalid character in the expression.");
-                    return;
                 }
-                if ("xyzXYZ1234567890(".Contains(s))
+                // It checks that the valid tokens are in the right order.
+                if (double.TryParse(s, out result) || (Regex.IsMatch(s, "^[A-Za-z]+[A-Za-z0-9]*") || s == ")" || "+-*/".Contains(s)))
                 {
-                    if (operatorlpar == false)
+                    if ("+-*/)".Contains(t) == false)
                     {
-                        new FormulaFormatException("Not valid operation");
-                        return;
+                        new FormulaFormatException("Invalid entry after variable, number or closing parenthesis");
                     }
-                    numberrpar = true;
-                    operatorlpar = false;
                 }
-                else if ("+-*/".Contains(s))
+                else if (s == "(" || "+-*/".Contains(s))
                 {
-                    if (numberrpar == false)
+                    if (double.TryParse(t, out result) == false && (Regex.IsMatch(tokens[0], "^[A-Za-z]+[A-Za-z0-9]*") == false && "(".Contains(t)))
                     {
-                        new FormulaFormatException("Not valid operation");
-                        return;
+                        new FormulaFormatException("Invalid entry after operator or opening parenthesis");
                     }
-                    numberrpar = false;
-                    operatorlpar = true;
                 }
                 // It checks that at any point the number of left parenthesis in never greater than the number of right parenthesis.
                 if (s == "(")
@@ -116,19 +100,6 @@ namespace Formulas
                     if (rpar > lpar)
                     {
                         new FormulaFormatException("Missing left parethesis.");
-                        return;
-                    }
-                }
-            }
-            // It checks that the last token is a number, variable or clsing parenthesis.
-            if (double.TryParse(GetTokens(formula).Last(), out result) == false)
-            {
-                foreach (char c in GetTokens(formula).Last())
-                {
-                    if ("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789+-*/()".Contains(c) == false)
-                    {
-                        new FormulaFormatException("Only numbers, variables, or a right parenthesis are allowed as first character.");
-                        return;
                     }
                 }
             }
@@ -158,17 +129,50 @@ namespace Formulas
             Stack<double> values = new Stack<double>();
             Stack<string> operators = new Stack<string>();
 
-            foreach(string t in form)
+            foreach (string t in form)
             {
-                double number;
-                double result;
-                if (double.TryParse(t, out number))
+                string tok = t.Trim();
+                double number, number2;
+                if (double.TryParse(tok, out number))
                 {
                     if ("/".Contains(operators.Peek()))
                     {
                         if (number == 0)
                         {
-                            new UndefinedVariableException("Division by zero");
+                            new FormulaEvaluationException("Division by zero");
+                            return 0;
+                        }
+                        number = values.Pop() / number;
+                        values.Push(number);
+                        operators.Pop();
+                    }
+                    else if ("*".Contains(operators.Peek()))
+                    {
+                        number = values.Pop() * number;
+                        values.Push(number);
+                        operators.Pop();
+                    }
+                    else
+                    {
+                        values.Push(number);
+                    }
+                }
+                else if (Regex.IsMatch(tok, "^[A-Za-z]+[A-Za-z0-9]*"))
+                {
+                    try
+                    {
+                        number = lookup(tok);
+                    }
+                    catch (Exception)
+                    {
+                        new UndefinedVariableException("This variable is not defined");
+                    }
+
+                    if ("/".Contains(operators.Peek()))
+                    {
+                        if (number == 0)
+                        {
+                            new FormulaEvaluationException("Division by zero");
                             return 0;
                         }
                         number = values.Pop() / number;
@@ -180,6 +184,29 @@ namespace Formulas
                         number = values.Pop() * number;
                         values.Push(number);
                         operators.Pop();
+                    }
+                    else
+                    {
+                        values.Push(number);
+                    }
+                }
+                else if (tok == "+")
+                {
+                    if (operators.Peek() == "+")
+                    {
+                        number = values.Pop();
+                        number2 = values.Pop();
+                        number = number + number2;
+                        values.Push(number);
+                        operators.Push(tok);
+                    }
+                    if (operators.Peek() == "-")
+                    {
+                        number = values.Pop();
+                        number2 = values.Pop();
+                        number = number - number2;
+                        values.Push(number);
+                        operators.Push(tok);
                     }
                 }
             }
