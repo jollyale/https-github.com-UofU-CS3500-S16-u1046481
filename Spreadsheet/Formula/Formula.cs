@@ -190,6 +190,7 @@ namespace Formulas
                         values.Push(number);
                     }
                 }
+                // Empty comment
                 else if (tok == "+")
                 {
                     if (operators.Peek() == "+")
