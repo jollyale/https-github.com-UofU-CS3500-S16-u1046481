@@ -43,50 +43,54 @@ namespace Formulas
         {
             if (formula == null)
             {
-                new FormulaFormatException("Nothing to calculate");
+                throw new FormulaFormatException("Nothing to calculate");
             }
-
-            List<string> tokens = new List<string>(GetTokens(formula));
+            string formula1 = formula.Trim();
+            form = new List<string>(GetTokens(formula1));
+            List<string> tokens = new List<string>(GetTokens(formula1));
             // It checks if there is at least one token.
             if (tokens.Count() < 1)
             {
-                new FormulaFormatException("Nothing to calculate");
+                throw new FormulaFormatException("Nothing to calculate");
             }
             double result;
             // It checks if the first token is a valid entry as a first token.
-            if (double.TryParse(tokens[0], out result) == false && (Regex.IsMatch(tokens[0], "^[A-Za-z]+[A-Za-z0-9]*") == false) && tokens[0] != "(")
+            if (double.TryParse(tokens[0].Trim(), out result) == false && (Regex.IsMatch(tokens[0].Trim(), "^[A-Za-z]+$|^[A-Za-z]+[0-9]*$") == false) && tokens[0].Trim() != "(")
             {
-                new FormulaFormatException("Only numbers, variables, or a left parenthesis are allowed as the first character.");
+                throw new FormulaFormatException("Only numbers, variables, or a left parenthesis are allowed as the first character.");
             }
 
             // It checks that the last token is a number, variable or closing parenthesis.
-            if (double.TryParse(tokens[tokens.Count()-1], out result) == false && (Regex.IsMatch(tokens[tokens.Count() - 1], "^[A-Za-z]+[A-Za-z0-9]*") == false) && tokens[0] != ")")
+            if (double.TryParse(tokens[tokens.Count() - 1], out result) == false && (Regex.IsMatch(tokens[tokens.Count() - 1], "^[A-Za-z]+$|^[A-Za-z]+[0-9]*$") == false) && tokens[tokens.Count() - 1] != ")")
             {
-                new FormulaFormatException("Only numbers, variables, or a left parenthesis are allowed as the first character.");
+                throw new FormulaFormatException("Only numbers, variables, or a left parenthesis are allowed as the first character.");
             }
 
             int lpar = 0, rpar = 0;
-            for (int i=0; i < (tokens.Count()-1); i++)
+            for (int i = 1; i <= (tokens.Count() - 1); i++)
             {
-                string s = tokens[i].Trim(), t = tokens[i+1].Trim();
+                string s = tokens[i].Trim(), t = tokens[i - 1].Trim();
+                bool ntf = double.TryParse(s, out result), vtf = Regex.IsMatch(s, "^[A-Za-z]+$|^[A-Za-z]+[0-9]*$");
+                bool tntf = double.TryParse(t, out result), tvtf = Regex.IsMatch(t, "^[A-Za-z]+$|^[A-Za-z]+[0-9]*$");
+
                 // It checks if there are any invalid tokens.
-                if (double.TryParse(s, out result) == false && (Regex.IsMatch(tokens[0], "^[A-Za-z]+[A-Za-z0-9]*") == false) && (Regex.IsMatch(s, "[()+-*/]+") == false))
+                if ((ntf == false && vtf == false) && ("()+-*/".Contains(s) == false))
                 {
-                    new FormulaFormatException("Invalid character in the expression.");
+                    throw new FormulaFormatException("Invalid character in the expression.");
                 }
                 // It checks that the valid tokens are in the right order.
-                if (double.TryParse(s, out result) || (Regex.IsMatch(s, "^[A-Za-z]+[A-Za-z0-9]*") || s == ")" || "+-*/".Contains(s)))
+                if (tntf || tvtf || ")".Contains(t))
                 {
-                    if ("+-*/)".Contains(t) == false)
+                    if ("+-*/)".Contains(s) == false)
                     {
-                        new FormulaFormatException("Invalid entry after variable, number or closing parenthesis");
+                        throw new FormulaFormatException("Invalid entry after variable, number or closing parenthesis");
                     }
                 }
-                else if (s == "(" || "+-*/".Contains(s))
+                else if (t == "(" || "+-*/".Contains(t))
                 {
-                    if (double.TryParse(t, out result) == false && (Regex.IsMatch(tokens[0], "^[A-Za-z]+[A-Za-z0-9]*") == false && "(".Contains(t)))
+                    if (ntf == false && vtf == false && "(".Contains(s) == false)
                     {
-                        new FormulaFormatException("Invalid entry after operator or opening parenthesis");
+                        throw new FormulaFormatException("Invalid entry after operator or opening parenthesis");
                     }
                 }
                 // It checks that at any point the number of left parenthesis in never greater than the number of right parenthesis.
@@ -99,20 +103,14 @@ namespace Formulas
                     rpar += 1;
                     if (rpar > lpar)
                     {
-                        new FormulaFormatException("Missing left parethesis.");
+                        throw new FormulaFormatException("Missing left parethesis.");
                     }
                 }
             }
             // It checks that, in the formula, the number of left and right parenthesis is equal.
             if (lpar != rpar)
             {
-                new FormulaFormatException("Missing parenthesis.");
-                return;
-            }
-            // It creates a List of tokens (strings)
-            foreach (string s in GetTokens(formula))
-            {
-                form.Add(s);
+                throw new FormulaFormatException("Missing parenthesis.");
             }
         }
         /// <summary>
@@ -131,118 +129,194 @@ namespace Formulas
 
             foreach (string t in form)
             {
-                string tok = t.Trim();
-                double number, number2;
-                if (double.TryParse(tok, out number))
+                double number, number2, result;
+                bool tnum = double.TryParse(t, out number), tvar = Regex.IsMatch(t, "^[A-Za-z]+$|^[A-Za-z]+[0-9]*$");
+                int valCount = values.Count, opCount = operators.Count;
+                if (valCount == 0 && (tnum || tvar))
                 {
-                    if ("/".Contains(operators.Peek()))
+                    if (tnum)
                     {
-                        if (number == 0)
-                        {
-                            new FormulaEvaluationException("Division by zero");
-                            return 0;
-                        }
-                        number = values.Pop() / number;
                         values.Push(number);
-                        operators.Pop();
                     }
-                    else if ("*".Contains(operators.Peek()))
+                    else if (tvar)
                     {
-                        number = values.Pop() * number;
-                        values.Push(number);
-                        operators.Pop();
-                    }
-                    else
-                    {
+                        number = lookup(t);
                         values.Push(number);
                     }
                 }
-                else if (Regex.IsMatch(tok, "^[A-Za-z]+[A-Za-z0-9]*"))
+                else if (opCount == 0 && "+-*/(".Contains(t))
                 {
-                    try
+                    operators.Push(t);
+                }
+                else
+                {
+                    string peek = operators.Peek();
+                    if (tnum)
                     {
-                        number = lookup(tok);
-                    }
-                    catch (Exception)
-                    {
-                        new UndefinedVariableException("This variable is not defined");
-                    }
-
-                    if ("/".Contains(operators.Peek()))
-                    {
-                        if (number == 0)
+                        if ("/".Contains(peek))
                         {
-                            new FormulaEvaluationException("Division by zero");
-                            return 0;
+                            if (number == 0)
+                            {
+                                throw new FormulaFormatException("Division by zero");
+                            }
+                            result = values.Pop() / number;
+                            values.Push(result);
+                            operators.Pop();
                         }
-                        number = values.Pop() / number;
-                        values.Push(number);
-                        operators.Pop();
+                        else if ("*".Contains(peek))
+                        {
+                            result = values.Pop() * number;
+                            values.Push(result);
+                            operators.Pop();
+                        }
+                        else
+                        {
+                            values.Push(number);
+                        }
                     }
-                    if ("*".Contains(operators.Peek()))
+                    else if (tvar)
                     {
-                        number = values.Pop() * number;
-                        values.Push(number);
-                        operators.Pop();
+                        number = lookup(t);
+                        if ("/".Contains(peek))
+                        {
+                            if (number == 0)
+                            {
+                                throw new FormulaFormatException("Division by zero");
+                            }
+                            result = values.Pop() / number;
+                            values.Push(result);
+                            operators.Pop();
+                        }
+                        else if ("*".Contains(operators.Peek()))
+                        {
+                            result = values.Pop() * number;
+                            values.Push(result);
+                            operators.Pop();
+                        }
+                        else
+                        {
+                            values.Push(number);
+                        }
                     }
-                    else
+                    else if (t == "+" || t == "-")
                     {
-                        values.Push(number);
+                        if (operators.Peek() == "+")
+                        {
+                            number = values.Pop();
+                            number2 = values.Pop();
+                            number = number + number2;
+                            values.Push(number);
+                            operators.Pop();
+                        }
+                        else if (operators.Peek() == "-")
+                        {
+                            number = values.Pop();
+                            number2 = values.Pop();
+                            number = number - number2;
+                            values.Push(number);
+                            operators.Pop();
+                        }
+                        operators.Push(t);
+                    }
+                    else if (t == "*" || t == "/" || t == "(")
+                    {
+                        operators.Push(t);
+                    }
+                    else if (t == ")")
+                    {
+                        if (operators.Peek() == "+")
+                        {
+                            number = values.Pop();
+                            number2 = values.Pop();
+                            operators.Pop();
+                            number = number + number2;
+                            values.Push(number);
+                        }
+                        else if (operators.Peek() == "-")
+                        {
+                            number = values.Pop();
+                            number2 = values.Pop();
+                            operators.Pop();
+                            number = number - number2;
+                            values.Push(number);
+                        }
+                        operators.Pop();
+                        if (operators.Count > 0)
+                        {
+                            if (operators.Peek() == "*")
+                            {
+                                number = values.Pop();
+                                number2 = values.Pop();
+                                number = number * number2;
+                                values.Push(number);
+                            }
+                            else if (operators.Peek() == "/")
+                            {
+                                number = values.Pop();
+                                number2 = values.Pop();
+                                number = number2 / number;
+                                values.Push(number);
+                            }
+                        }
                     }
                 }
-                // Empty comment
-                else if (tok == "+")
+            }
+            if (operators.Count == 0)
+            {
+                double result = values.Pop();
+                Console.Write(result);
+                return result;
+            }
+            else
+            {
+                double number1, number2, result;
+                number1 = values.Pop();
+                number2 = values.Pop();
+                if (operators.Peek() == "+")
                 {
-                    if (operators.Peek() == "+")
-                    {
-                        number = values.Pop();
-                        number2 = values.Pop();
-                        number = number + number2;
-                        values.Push(number);
-                        operators.Push(tok);
-                    }
-                    if (operators.Peek() == "-")
-                    {
-                        number = values.Pop();
-                        number2 = values.Pop();
-                        number = number - number2;
-                        values.Push(number);
-                        operators.Push(tok);
-                    }
+                    result = number1 + number2;
+                    Console.Write(result);
+                    return result;
+                }
+                else if (operators.Peek() == "+")
+                {
+                    result = number2 - number1;
+                    Console.Write(result);
+                    return result;
                 }
             }
             return 0;
         }
 
-        /// <summary>
-        /// Given a formula, enumerates the tokens that compose it.  Tokens are left paren,
-        /// right paren, one of the four operator symbols, a string consisting of a letter followed by
-        /// one or more digits and/or letters, a double literal, and anything that doesn't
-        /// match one of those patterns.  There are no empty tokens, and no token contains white space.
-        /// </summary>
-        private static IEnumerable<string> GetTokens(String formula)
+/// <summary>
+/// Given a formula, enumerates the tokens that compose it.  Tokens are left paren,
+/// right paren, one of the four operator symbols, a string consisting of a letter followed by
+/// one or more digits and/or letters, a double literal, and anything that doesn't
+/// match one of those patterns.  There are no empty tokens, and no token contains white space.
+/// </summary>
+private static IEnumerable<string> GetTokens(String formula)
+{
+    // Patterns for individual tokens
+    String lpPattern = @"\(";
+    String rpPattern = @"\)";
+    String opPattern = @"[\+\-*/]";
+    String varPattern = @"[a-zA-Z][0-9a-zA-Z]+";
+    String doublePattern = @"(?: \d+\.\d* | \d*\.\d+ | \d+ ) (?: e[\+-]?\d+)?";
+    String spacePattern = @"\s+";
+
+    // Overall pattern
+    String pattern = String.Format("({0}) | ({1}) | ({2}) | ({3}) | ({4}) | ({5})",
+                                    lpPattern, rpPattern, opPattern, varPattern, doublePattern, spacePattern);
+
+    // Enumerate matching tokens that don't consist solely of white space.
+    foreach (String s in Regex.Split(formula, pattern, RegexOptions.IgnorePatternWhitespace))
+    {
+        if (!Regex.IsMatch(s, @"^\s*$", RegexOptions.Singleline))
         {
-            // Patterns for individual tokens
-            String lpPattern = @"\(";
-            String rpPattern = @"\)";
-            String opPattern = @"[\+\-*/]";
-            String varPattern = @"[a-zA-Z][0-9a-zA-Z]+";
-            String doublePattern = @"(?: \d+\.\d* | \d*\.\d+ | \d+ ) (?: e[\+-]?\d+)?";
-            String spacePattern = @"\s+";
-
-            // Overall pattern
-            String pattern = String.Format("({0}) | ({1}) | ({2}) | ({3}) | ({4}) | ({5})",
-                                            lpPattern, rpPattern, opPattern, varPattern, doublePattern, spacePattern);
-
-            // Enumerate matching tokens that don't consist solely of white space.
-            foreach (String s in Regex.Split(formula, pattern, RegexOptions.IgnorePatternWhitespace))
-            {
-                if (!Regex.IsMatch(s, @"^\s*$", RegexOptions.Singleline))
-                {
-                    yield return s;
-                }
-            }
+            yield return s;
         }
+    }
+}
     }
 
     /// <summary>
@@ -254,47 +328,47 @@ namespace Formulas
     /// </summary>
     public delegate double Lookup(string s);
 
+/// <summary>
+/// Used to report that a Lookup delegate is unable to determine the value
+/// of a variable.
+/// </summary>
+public class UndefinedVariableException : Exception
+{
     /// <summary>
-    /// Used to report that a Lookup delegate is unable to determine the value
-    /// of a variable.
+    /// Constructs an UndefinedVariableException containing whose message is the
+    /// undefined variable.
     /// </summary>
-    public class UndefinedVariableException : Exception
+    /// <param name="variable"></param>
+    public UndefinedVariableException(String variable)
+        : base(variable)
     {
-        /// <summary>
-        /// Constructs an UndefinedVariableException containing whose message is the
-        /// undefined variable.
-        /// </summary>
-        /// <param name="variable"></param>
-        public UndefinedVariableException(String variable)
-            : base(variable)
-        {
-        }
     }
+}
 
+/// <summary>
+/// Used to report syntactic errors in the parameter to the Formula constructor.
+/// </summary>
+public class FormulaFormatException : Exception
+{
     /// <summary>
-    /// Used to report syntactic errors in the parameter to the Formula constructor.
+    /// Constructs a FormulaFormatException containing the explanatory message.
     /// </summary>
-    public class FormulaFormatException : Exception
+    public FormulaFormatException(String message) : base(message)
     {
-        /// <summary>
-        /// Constructs a FormulaFormatException containing the explanatory message.
-        /// </summary>
-        public FormulaFormatException(String message) : base(message)
-        {
-            Console.WriteLine(message);
-        }
+        Console.WriteLine(message);
     }
+}
 
+/// <summary>
+/// Used to report errors that occur when evaluating a Formula.
+/// </summary>
+public class FormulaEvaluationException : Exception
+{
     /// <summary>
-    /// Used to report errors that occur when evaluating a Formula.
+    /// Constructs a FormulaEvaluationException containing the explanatory message.
     /// </summary>
-    public class FormulaEvaluationException : Exception
+    public FormulaEvaluationException(String message) : base(message)
     {
-        /// <summary>
-        /// Constructs a FormulaEvaluationException containing the explanatory message.
-        /// </summary>
-        public FormulaEvaluationException(String message) : base(message)
-        {
-        }
     }
+}
 }
