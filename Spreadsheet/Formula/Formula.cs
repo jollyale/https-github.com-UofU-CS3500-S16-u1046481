@@ -1,5 +1,6 @@
 ﻿// Skeleton written by Joe Zachary for CS 3500, January 2015
 // Revised by Joe Zachary, January 2016
+// JLZ Repaired pair of mistakes, January 23, 2016
 
 using System;
 using System.Collections.Generic;
@@ -22,7 +23,7 @@ namespace Formulas
         /// <summary>
         /// Creates a Formula from a string that consists of a standard infix expression composed
         /// from non-negative floating-point numbers (using C#-like syntax for double/int literals), 
-        /// variable symbols (a letter followed by one or more letters and/or digits), left and right
+        /// variable symbols (a letter followed by zero or more letters and/or digits), left and right
         /// parentheses, and the four binary operator symbols +, -, *, and /.  White space is
         /// permitted between tokens, but is not required.
         /// 
@@ -58,7 +59,7 @@ namespace Formulas
             if (double.TryParse(tokens[0].Trim(), out result) == false && (Regex.IsMatch(tokens[0].Trim(), "^[A-Za-z]+$|^[A-Za-z]+[0-9]*$") == false) && tokens[0].Trim() != "(")
             {
                 throw new FormulaFormatException("Only numbers, variables, or a left parenthesis are allowed as the first character.");
-            }
+        }
 
             // It checks that the last token is a number, variable or closing parenthesis.
             if (double.TryParse(tokens[tokens.Count() - 1], out result) == false && (Regex.IsMatch(tokens[tokens.Count() - 1], "^[A-Za-z]+$|^[A-Za-z]+[0-9]*$") == false) && tokens[tokens.Count() - 1] != ")")
@@ -288,35 +289,35 @@ namespace Formulas
             return 0;
         }
 
-/// <summary>
-/// Given a formula, enumerates the tokens that compose it.  Tokens are left paren,
-/// right paren, one of the four operator symbols, a string consisting of a letter followed by
-/// one or more digits and/or letters, a double literal, and anything that doesn't
-/// match one of those patterns.  There are no empty tokens, and no token contains white space.
-/// </summary>
-private static IEnumerable<string> GetTokens(String formula)
-{
-    // Patterns for individual tokens
-    String lpPattern = @"\(";
-    String rpPattern = @"\)";
-    String opPattern = @"[\+\-*/]";
-    String varPattern = @"[a-zA-Z][0-9a-zA-Z]+";
-    String doublePattern = @"(?: \d+\.\d* | \d*\.\d+ | \d+ ) (?: e[\+-]?\d+)?";
-    String spacePattern = @"\s+";
-
-    // Overall pattern
-    String pattern = String.Format("({0}) | ({1}) | ({2}) | ({3}) | ({4}) | ({5})",
-                                    lpPattern, rpPattern, opPattern, varPattern, doublePattern, spacePattern);
-
-    // Enumerate matching tokens that don't consist solely of white space.
-    foreach (String s in Regex.Split(formula, pattern, RegexOptions.IgnorePatternWhitespace))
-    {
-        if (!Regex.IsMatch(s, @"^\s*$", RegexOptions.Singleline))
+        /// <summary>
+        /// Given a formula, enumerates the tokens that compose it.  Tokens are left paren,
+        /// right paren, one of the four operator symbols, a string consisting of a letter followed by
+        /// zero or more digits and/or letters, a double literal, and anything that doesn't
+        /// match one of those patterns.  There are no empty tokens, and no token contains white space.
+        /// </summary>
+        private static IEnumerable<string> GetTokens(String formula)
         {
-            yield return s;
+            // Patterns for individual tokens
+            String lpPattern = @"\(";
+            String rpPattern = @"\)";
+            String opPattern = @"[\+\-*/]";
+            String varPattern = @"[a-zA-Z][0-9a-zA-Z]*";
+            String doublePattern = @"(?: \d+\.\d* | \d*\.\d+ | \d+ ) (?: e[\+-]?\d+)?";
+            String spacePattern = @"\s+";
+
+            // Overall pattern
+            String pattern = String.Format("({0}) | ({1}) | ({2}) | ({3}) | ({4}) | ({5})",
+                                            lpPattern, rpPattern, opPattern, varPattern, doublePattern, spacePattern);
+
+            // Enumerate matching tokens that don't consist solely of white space.
+            foreach (String s in Regex.Split(formula, pattern, RegexOptions.IgnorePatternWhitespace))
+            {
+                if (!Regex.IsMatch(s, @"^\s*$", RegexOptions.Singleline))
+                {
+                    yield return s;
+                }
+            }
         }
-    }
-}
     }
 
     /// <summary>
@@ -328,47 +329,47 @@ private static IEnumerable<string> GetTokens(String formula)
     /// </summary>
     public delegate double Lookup(string s);
 
-/// <summary>
-/// Used to report that a Lookup delegate is unable to determine the value
-/// of a variable.
-/// </summary>
-public class UndefinedVariableException : Exception
-{
     /// <summary>
-    /// Constructs an UndefinedVariableException containing whose message is the
-    /// undefined variable.
+    /// Used to report that a Lookup delegate is unable to determine the value
+    /// of a variable.
     /// </summary>
-    /// <param name="variable"></param>
-    public UndefinedVariableException(String variable)
-        : base(variable)
+    public class UndefinedVariableException : Exception
     {
+        /// <summary>
+        /// Constructs an UndefinedVariableException containing whose message is the
+        /// undefined variable.
+        /// </summary>
+        /// <param name="variable"></param>
+        public UndefinedVariableException(String variable)
+            : base(variable)
+        {
+        }
     }
-}
 
-/// <summary>
-/// Used to report syntactic errors in the parameter to the Formula constructor.
-/// </summary>
-public class FormulaFormatException : Exception
-{
     /// <summary>
-    /// Constructs a FormulaFormatException containing the explanatory message.
+    /// Used to report syntactic errors in the parameter to the Formula constructor.
     /// </summary>
-    public FormulaFormatException(String message) : base(message)
+    public class FormulaFormatException : Exception
     {
+        /// <summary>
+        /// Constructs a FormulaFormatException containing the explanatory message.
+        /// </summary>
+        public FormulaFormatException(String message) : base(message)
+        {
         Console.WriteLine(message);
+        }
     }
-}
 
-/// <summary>
-/// Used to report errors that occur when evaluating a Formula.
-/// </summary>
-public class FormulaEvaluationException : Exception
-{
     /// <summary>
-    /// Constructs a FormulaEvaluationException containing the explanatory message.
+    /// Used to report errors that occur when evaluating a Formula.
     /// </summary>
-    public FormulaEvaluationException(String message) : base(message)
+    public class FormulaEvaluationException : Exception
     {
+        /// <summary>
+        /// Constructs a FormulaEvaluationException containing the explanatory message.
+        /// </summary>
+        public FormulaEvaluationException(String message) : base(message)
+        {
+        }
     }
-}
 }
