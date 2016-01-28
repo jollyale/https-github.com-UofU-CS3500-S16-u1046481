@@ -110,6 +110,89 @@ namespace FormulaTestCases
         }
 
         /// <summary>
+        /// This checks that the order of parethesis is executed correctly.
+        /// </summary>
+        [TestMethod]
+        public void Evaluate6()
+        {
+            Formula f = new Formula("(((3+2)+(4/2))*(3-1)+(5*3))");
+            Assert.AreEqual(f.Evaluate(Lookup4), 29.0, 1e-6);
+        }
+
+        /// <summary>
+        /// This checks that the "-" signs are executed correctly and that in no point the numbers are swapped.
+        /// </summary>
+        [TestMethod]
+        public void Evaluate7()
+        {
+            Formula f = new Formula("100.5-(4-3)-((8-3)-4)");
+            Assert.AreEqual(f.Evaluate(Lookup4), 98.5, 1e-6);
+        }
+
+        /// <summary>
+        /// This checks that even with variables, it executes it.
+        /// </summary>
+        [TestMethod]
+        public void Evaluate9()
+        {
+            Formula f = new Formula("(((x+y)+(z/x))*(3-1)+(5*3))");
+            Assert.AreEqual(f.Evaluate(Lookup4), 39.0, 1e-6);
+        }
+
+        /// <summary>
+        /// This checks a division by 0
+        /// </summary>
+        [TestMethod]
+        [ExpectedException(typeof(FormulaEvaluationException))]
+        public void Evaluate10()
+        {
+            Formula f = new Formula("(((x+y)+(z/0))*(3-1)+(5*3))");
+            f.Evaluate(Lookup4);
+        }
+
+        /// <summary>
+        /// It checks that a random word is not considered a variable.
+        /// </summary>
+        [TestMethod]
+        [ExpectedException(typeof(FormulaFormatException))]
+        public void Construct4()
+        {
+            Formula f = new Formula("(ciao)");
+        }
+
+        /// <summary>
+        /// It checks that a negative number is still not valid.
+        /// </summary>
+        [TestMethod]
+        [ExpectedException(typeof(FormulaFormatException))]
+        public void Construct5()
+        {
+            Formula f = new Formula("(-6)");
+        }
+
+        /// <summary>
+        /// It checks that an undefined variable throws the correct exeption.
+        /// </summary>
+        [TestMethod]
+        [ExpectedException(typeof(FormulaEvaluationException))]
+        public void Evaluate8()
+        {
+            Formula f = new Formula("(x6)");
+            f.Evaluate(Lookup4);
+        }
+
+        /// <summary>
+        /// It checks that even a long unmber having an invalid character is identified.
+        /// </summary>
+        [TestMethod]
+        [ExpectedException(typeof(FormulaFormatException))]
+        public void Evaluate11()
+        {
+            Formula f = new Formula("(2.00000000000000000000000000000000000000000f)");
+            f.Evaluate(Lookup4);
+        }
+
+        /// <summary>
         /// A Lookup method that maps x to 4.0, y to 6.0, and z to 8.0.
         /// All other variables result in an UndefinedVariableException.
         /// </summary>
