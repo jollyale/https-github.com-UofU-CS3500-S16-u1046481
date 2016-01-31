@@ -188,7 +188,7 @@ namespace FormulaTestCases
         [ExpectedException(typeof(FormulaFormatException))]
         public void Evaluate11()
         {
-            Formula f = new Formula("(2.00000000000000000000000000000000000000000f)");
+            Formula f = new Formula("(2.0000000000000000000000000000000000000000f)");
             f.Evaluate(Lookup4);
         }
 
